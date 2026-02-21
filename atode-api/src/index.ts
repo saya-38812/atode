@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 import Database from 'better-sqlite3'
 import { cors } from 'hono/cors'
+import { supabase } from './supabese'
+import 'dotenv/config'
 
 
 const app = new Hono()
@@ -26,28 +28,24 @@ db.exec(`
     `)
     
 app.post('/bookmark', async (c) => {
-      try {
-        const body = await c.req.json()
-        const { url, reason } = body
+      const body = await c.req.json()
+      const { url, reason } = body
     
-        if (!url) {
-          console.log('no url')
-          return c.json({ status: 'ng' }, 400)
-        }
+      const user_id = "仮ユーザーID" // まずは固定でOK
     
-        db.prepare(`
-          INSERT INTO bookmarks (url, reason, created_at)
-          VALUES (?, ?, datetime('now'))
-        `).run(url, reason || '')
+      const { error } = await supabase
+        .from('bookmarks')
+        .insert({
+          user_id,
+          url,
+          reason,
+        })
     
-        console.log('saved:', url)
+      if (error) return c.json({ error }, 400)
     
-        return c.json({ status: 'ok' })
-      } catch (e) {
-        console.error('error:', e)
-        return c.json({ status: 'error' }, 500)
-      }
+      return c.json({ status: 'ok' })
     })
+    
     
     
 app.get('/capture', (c) => {
