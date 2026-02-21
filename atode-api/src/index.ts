@@ -55,26 +55,12 @@ app.post('/bookmark', async (c) => {
   }
 
   if (url.includes("x.com") || url.includes("twitter.com")) {
-    try {
-      const res = await fetch(
-        `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}`
-      )
+    const match = url.match(/x\.com\/([^\/]+)\//)
+    const username = match ? match[1] : "X投稿"
   
-      const data = await res.json()
-  
-      if (data.html) {
-        const match = data.html.match(/<p[^>]*>(.*?)<\/p>/)
-        if (match && match[1]) {
-          const clean = match[1].replace(/<[^>]+>/g, '').trim()
-          if (clean.length > 0) {
-            title = clean
-          }
-        }
-      }
-    } catch (e) {
-      console.log("X oEmbed failed")
-    }
+    title = `@${username} の投稿`
   }
+  
   
   
   if (url.includes("youtube.com/watch")) {
@@ -92,6 +78,13 @@ app.post('/bookmark', async (c) => {
       }
     }
   }
+
+  // ここまでで title いろいろ処理
+
+if (!title || typeof title !== "string" || title.trim() === "") {
+  title = url
+}
+
   
 
   console.log("FINAL TITLE:", title)
