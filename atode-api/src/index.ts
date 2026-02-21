@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 import Database from 'better-sqlite3'
 import { cors } from 'hono/cors'
-import { supabase } from './supabese'
+import { supabase } from './supabase'
 import 'dotenv/config'
 
 
