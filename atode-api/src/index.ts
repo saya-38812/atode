@@ -106,30 +106,40 @@ app.get('/next', (c) => {
   `)
 })
 
-app.get('/api/next', (c) => {
-  const rows = db.prepare(`
-    SELECT id, url, reason, created_at
-    FROM bookmarks
-    WHERE done = 0
-    ORDER BY created_at ASC
-    LIMIT 3
-  `).all()
+app.get('/api/next', async (c) => {
+  const user_id = "00000000-0000-0000-0000-000000000001"
 
-  return c.json(rows)
+  const { data, error } = await supabase
+    .from('bookmarks')
+    .select('*')
+    .eq('user_id', user_id)
+    .eq('done', false)
+    .order('created_at', { ascending: true })
+    .limit(3)
+
+  if (error) return c.json({ error }, 400)
+
+  return c.json(data)
 })
 
 
-app.post('/done/:id', (c) => {
+
+app.post('/done/:id', async (c) => {
   const id = c.req.param('id')
 
-  db.prepare(`
-    UPDATE bookmarks
-    SET done = 1
-    WHERE id = ?
-  `).run(id)
+  const { error } = await supabase
+    .from('bookmarks')
+    .update({
+      done: true,
+      done_at: new Date().toISOString()
+    })
+    .eq('id', id)
 
-  return c.redirect('/next')
+  if (error) return c.json({ error }, 400)
+
+  return c.json({ status: 'ok' })
 })
+
 
     
 
