@@ -7,7 +7,7 @@ import 'dotenv/config'
 
 const app = new Hono()
 
-app.use('/api/*', cors())
+app.use('*', cors())
 
 app.use('*', async (c, next) => {
   console.log('REQ', c.req.method, c.req.url)
