@@ -85,8 +85,12 @@ export default function Home() {
               </div>
 
               <h2 className="text-xl md:text-2xl font-bold leading-tight mt-4 text-slate-900 dark:text-white break-all">
-                {card.url}
+                {card.title}
               </h2>
+
+              <p className="text-xs text-slate-400 break-all mt-2">
+                {card.url}
+              </p>
 
               <button
                 onClick={() => handleDone(card.id)}
