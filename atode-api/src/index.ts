@@ -17,40 +17,28 @@ app.use('*', async (c, next) => {
 
     
 app.post('/bookmark', async (c) => {
-      const body = await c.req.json()
-      const { url, reason } = body
-    
-      const user_id = "00000000-0000-0000-0000-000000000001"
-    
-      let title = url
-    
-      try {
-        const res = await fetch(url)
-        const html = await res.text()
-        const match = html.match(/<title>(.*?)<\/title>/i)
-        if (match && match[1]) {
-          title = match[1]
-        }
-      } catch (e) {
-        console.log("title fetch failed")
-      }
-    
-      const { data, error } = await supabase
-        .from('bookmarks')
-        .insert({
-          user_id,
-          url,
-          title,
-          reason
-        })
-        .select()
-    
-      console.log("INSERT RESULT:", { data, error })
-    
-      if (error) return c.json({ error }, 400)
-    
-      return c.json({ status: 'ok' })
+  const body = await c.req.json()
+  const { url, title, reason } = body
+
+  const user_id = "00000000-0000-0000-0000-000000000001"
+
+  const { data, error } = await supabase
+    .from('bookmarks')
+    .insert({
+      user_id,
+      url,
+      title,
+      reason
     })
+    .select()
+
+  console.log("INSERT RESULT:", { data, error })
+
+  if (error) return c.json({ error }, 400)
+
+  return c.json({ status: 'ok' })
+})
+
     
     
     
