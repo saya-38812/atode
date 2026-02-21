@@ -22,24 +22,30 @@ db.exec(`
     )
     `)
     
-app.get('/bookmark', (c) => {
-      const url = c.req.query('url')
-      const reason = c.req.query('reason')
+app.post('/bookmark', async (c) => {
+      try {
+        const body = await c.req.json()
+        const { url, reason } = body
     
-      if (!url || !reason) {
-        console.log('empty query')
-        return c.text('ng')
+        if (!url) {
+          console.log('no url')
+          return c.json({ status: 'ng' }, 400)
+        }
+    
+        db.prepare(`
+          INSERT INTO bookmarks (url, reason, created_at)
+          VALUES (?, ?, datetime('now'))
+        `).run(url, reason || '')
+    
+        console.log('saved:', url)
+    
+        return c.json({ status: 'ok' })
+      } catch (e) {
+        console.error('error:', e)
+        return c.json({ status: 'error' }, 500)
       }
-    
-      db.prepare(`
-        INSERT INTO bookmarks (url, reason, created_at)
-        VALUES (?, ?, datetime('now'))
-      `).run(url, reason)
-    
-      console.log('saved:', url)
-    
-      return c.text('ok')
     })
+    
     
 app.get('/capture', (c) => {
       const url = c.req.query('url') || ''
@@ -112,8 +118,7 @@ app.post('/done/:id', (c) => {
 
 serve({
   fetch: app.fetch,
-  port: 8000,
-  hostname: '0.0.0.0'
+  port: Number(process.env.PORT) || 8000,
 })
 
-console.log('atode running http://localhost:8000')
+console.log(`atode running http://localhost:${process.env.PORT || 8000}`)
