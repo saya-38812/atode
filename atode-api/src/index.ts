@@ -2,7 +2,9 @@ import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 import Database from 'better-sqlite3'
 
+
 const app = new Hono()
+app.use('/api/*', cors())
 
 const db = new Database('db.sqlite3')
 
@@ -99,6 +101,18 @@ app.get('/next', (c) => {
       </body>
     </html>
   `)
+})
+
+app.get('/api/next', (c) => {
+  const rows = db.prepare(`
+    SELECT id, url, reason, created_at
+    FROM bookmarks
+    WHERE done = 0
+    ORDER BY created_at ASC
+    LIMIT 3
+  `).all()
+
+  return c.json(rows)
 })
 
 
