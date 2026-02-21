@@ -1,37 +1,51 @@
 import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
-import Database from 'better-sqlite3'
 import { cors } from 'hono/cors'
 import { supabase } from './supabase'
+import ogs from 'open-graph-scraper'
 import 'dotenv/config'
 
-import ogs from 'open-graph-scraper'
-
 const app = new Hono()
-app.use('/api/*', cors())
 
+app.use('/api/*', cors())
 
 app.use('*', async (c, next) => {
   console.log('REQ', c.req.method, c.req.url)
   await next()
 })
 
-    
-app.post('/bookmark', async (c) => {
-  console.log("BOOKMARK HIT")
+/* =========================================
+   Utility: Title Resolver
+========================================= */
 
-  const body = await c.req.json()
-  const { url, reason } = body
-
-  console.log("URL:", url)
-
-  const user_id = "00000000-0000-0000-0000-000000000001"
-
+async function resolveTitle(url: string): Promise<string> {
   let title = url
 
   try {
-    console.log("OG FETCH START")
+    // 1️⃣ YouTube優先
+    if (url.includes("youtube.com/watch")) {
+      const videoId = new URL(url).searchParams.get("v")
 
+      if (videoId) {
+        const ytRes = await fetch(
+          `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+        )
+        const ytData = await ytRes.json()
+
+        if (ytData?.title) {
+          return ytData.title
+        }
+      }
+    }
+
+    // 2️⃣ X専用処理
+    if (url.includes("x.com") || url.includes("twitter.com")) {
+      const match = url.match(/(?:x\.com|twitter\.com)\/([^\/]+)\//)
+      const username = match ? match[1] : "X投稿"
+      return `@${username} の投稿`
+    }
+
+    // 3️⃣ 通常サイト（OG取得）
     const { result } = await ogs({
       url,
       timeout: 5000,
@@ -42,8 +56,6 @@ app.post('/bookmark', async (c) => {
       }
     })
 
-    console.log("OG RESULT:", result)
-
     title =
       result.ogTitle ||
       result.twitterTitle ||
@@ -51,41 +63,39 @@ app.post('/bookmark', async (c) => {
       url
 
   } catch (e) {
-    console.log("OG ERROR:", e)
+    console.log("TITLE RESOLVE ERROR:", e)
   }
 
-  if (url.includes("x.com") || url.includes("twitter.com")) {
-    const match = url.match(/x\.com\/([^\/]+)\//)
-    const username = match ? match[1] : "X投稿"
-  
-    title = `@${username} の投稿`
-  }
-  
-  
-  
-  if (url.includes("youtube.com/watch")) {
-    const videoId = new URL(url).searchParams.get("v")
-  
-    if (videoId) {
-      try {
-        const ytRes = await fetch(
-          `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
-        )
-        const ytData = await ytRes.json()
-        title = ytData.title
-      } catch (e) {
-        console.log("YouTube title fetch failed")
-      }
-    }
+  // 最終保証
+  if (!title || typeof title !== "string" || title.trim() === "") {
+    return url
   }
 
-  // ここまでで title いろいろ処理
-
-if (!title || typeof title !== "string" || title.trim() === "") {
-  title = url
+  return title.trim()
 }
 
-  
+/* =========================================
+   POST /bookmark
+========================================= */
+
+app.post('/bookmark', async (c) => {
+  console.log("BOOKMARK HIT")
+
+  const body = await c.req.json()
+  const { url, reason } = body
+
+  if (!url) {
+    return c.json({ error: "URL required" }, 400)
+  }
+
+  const user_id = "00000000-0000-0000-0000-000000000001"
+
+  const title = await resolveTitle(url)
+
+  const safeReason =
+    typeof reason === "string" && reason.trim() !== ""
+      ? reason.trim()
+      : ""
 
   console.log("FINAL TITLE:", title)
 
@@ -95,20 +105,22 @@ if (!title || typeof title !== "string" || title.trim() === "") {
       user_id,
       url,
       title,
-      reason
+      reason: safeReason
     })
     .select()
 
   console.log("INSERT RESULT:", { data, error })
 
-  return c.json({ data, error })
+  if (error) {
+    return c.json({ error }, 400)
+  }
+
+  return c.json({ data })
 })
 
-
-    
-    
-    
-    
+/* =========================================
+   GET /api/next
+========================================= */
 
 app.get('/api/next', async (c) => {
   const user_id = "00000000-0000-0000-0000-000000000001"
@@ -121,12 +133,16 @@ app.get('/api/next', async (c) => {
     .order('created_at', { ascending: true })
     .limit(3)
 
-  if (error) return c.json({ error }, 400)
+  if (error) {
+    return c.json({ error }, 400)
+  }
 
   return c.json(data)
 })
 
-
+/* =========================================
+   POST /done/:id
+========================================= */
 
 app.post('/done/:id', async (c) => {
   const id = c.req.param('id')
@@ -139,17 +155,20 @@ app.post('/done/:id', async (c) => {
     })
     .eq('id', id)
 
-  if (error) return c.json({ error }, 400)
+  if (error) {
+    return c.json({ error }, 400)
+  }
 
   return c.json({ status: 'ok' })
 })
 
-
-    
+/* =========================================
+   Server Start
+========================================= */
 
 serve({
   fetch: app.fetch,
   port: Number(process.env.PORT) || 8000,
 })
 
-console.log(`atode running http://localhost:${process.env.PORT || 8000}`)
+console.log(`atode running on port ${process.env.PORT || 8000}`)
