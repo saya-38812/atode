@@ -15,16 +15,6 @@ app.use('*', async (c, next) => {
   await next()
 })
 
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS bookmarks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      url TEXT,
-      reason TEXT,
-      created_at TEXT,
-      done INTEGER DEFAULT 0
-    )
-    `)
     
 app.post('/bookmark', async (c) => {
       const body = await c.req.json()
