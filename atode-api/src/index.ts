@@ -59,17 +59,23 @@ app.post('/bookmark', async (c) => {
       const res = await fetch(
         `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}`
       )
+  
       const data = await res.json()
   
-      // htmlの中から本文を抽出
-      const match = data.html.match(/<p[^>]*>(.*?)<\/p>/)
-      if (match) {
-        title = match[1].replace(/<[^>]+>/g, '')
+      if (data.html) {
+        const match = data.html.match(/<p[^>]*>(.*?)<\/p>/)
+        if (match && match[1]) {
+          const clean = match[1].replace(/<[^>]+>/g, '').trim()
+          if (clean.length > 0) {
+            title = clean
+          }
+        }
       }
     } catch (e) {
       console.log("X oEmbed failed")
     }
   }
+  
   
   if (url.includes("youtube.com/watch")) {
     const videoId = new URL(url).searchParams.get("v")
