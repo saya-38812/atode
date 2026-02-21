@@ -18,22 +18,31 @@ app.use('*', async (c, next) => {
 
     
 app.post('/bookmark', async (c) => {
+  console.log("BOOKMARK HIT")
+
   const body = await c.req.json()
   const { url, reason } = body
+
+  console.log("URL:", url)
 
   const user_id = "00000000-0000-0000-0000-000000000001"
 
   let title = url
 
   try {
+    console.log("OG FETCH START")
+
     const { result } = await ogs({
       url,
+      timeout: 5000,
       fetchOptions: {
         headers: {
           "User-Agent": "Mozilla/5.0"
         }
       }
     })
+
+    console.log("OG RESULT:", result)
 
     title =
       result.ogTitle ||
@@ -42,8 +51,10 @@ app.post('/bookmark', async (c) => {
       url
 
   } catch (e) {
-    console.log("OG fetch failed")
+    console.log("OG ERROR:", e)
   }
+
+  console.log("FINAL TITLE:", title)
 
   const { data, error } = await supabase
     .from('bookmarks')
@@ -55,8 +66,11 @@ app.post('/bookmark', async (c) => {
     })
     .select()
 
+  console.log("INSERT RESULT:", { data, error })
+
   return c.json({ data, error })
 })
+
 
     
     
