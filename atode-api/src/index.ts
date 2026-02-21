@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
 import Database from 'better-sqlite3'
+import { cors } from 'hono/cors'
 
 
 const app = new Hono()
