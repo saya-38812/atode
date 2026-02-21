@@ -54,6 +54,40 @@ app.post('/bookmark', async (c) => {
     console.log("OG ERROR:", e)
   }
 
+  if (url.includes("x.com") || url.includes("twitter.com")) {
+    try {
+      const res = await fetch(
+        `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}`
+      )
+      const data = await res.json()
+  
+      // htmlの中から本文を抽出
+      const match = data.html.match(/<p[^>]*>(.*?)<\/p>/)
+      if (match) {
+        title = match[1].replace(/<[^>]+>/g, '')
+      }
+    } catch (e) {
+      console.log("X oEmbed failed")
+    }
+  }
+  
+  if (url.includes("youtube.com/watch")) {
+    const videoId = new URL(url).searchParams.get("v")
+  
+    if (videoId) {
+      try {
+        const ytRes = await fetch(
+          `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+        )
+        const ytData = await ytRes.json()
+        title = ytData.title
+      } catch (e) {
+        console.log("YouTube title fetch failed")
+      }
+    }
+  }
+  
+
   console.log("FINAL TITLE:", title)
 
   const { data, error } = await supabase
