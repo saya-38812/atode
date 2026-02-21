@@ -3,25 +3,6 @@
 import { useEffect, useState } from "react"
 import PageContainer from "./components/PageContainer"
 
-import ogs from 'open-graph-scraper'
-
-
-const { result } = await ogs({
-  url,
-  fetchOptions: {
-    headers: {
-      "User-Agent": "Mozilla/5.0"
-    }
-  }
-})
-
-const title =
-  result.ogTitle ||
-  result.twitterTitle ||
-  result.ogSiteName ||
-  url
-
-
 const colorMap: Record<string, string> = {
   読む: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
   試す:

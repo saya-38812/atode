@@ -5,6 +5,7 @@ import { cors } from 'hono/cors'
 import { supabase } from './supabase'
 import 'dotenv/config'
 
+import ogs from 'open-graph-scraper'
 
 const app = new Hono()
 app.use('/api/*', cors())
@@ -18,9 +19,31 @@ app.use('*', async (c, next) => {
     
 app.post('/bookmark', async (c) => {
   const body = await c.req.json()
-  const { url, title, reason } = body
+  const { url, reason } = body
 
   const user_id = "00000000-0000-0000-0000-000000000001"
+
+  let title = url
+
+  try {
+    const { result } = await ogs({
+      url,
+      fetchOptions: {
+        headers: {
+          "User-Agent": "Mozilla/5.0"
+        }
+      }
+    })
+
+    title =
+      result.ogTitle ||
+      result.twitterTitle ||
+      result.ogSiteName ||
+      url
+
+  } catch (e) {
+    console.log("OG fetch failed")
+  }
 
   const { data, error } = await supabase
     .from('bookmarks')
@@ -32,11 +55,7 @@ app.post('/bookmark', async (c) => {
     })
     .select()
 
-  console.log("INSERT RESULT:", { data, error })
-
-  if (error) return c.json({ error }, 400)
-
-  return c.json({ status: 'ok' })
+  return c.json({ data, error })
 })
 
     
