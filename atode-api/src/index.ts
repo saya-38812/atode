@@ -31,14 +31,15 @@ app.post('/bookmark', async (c) => {
       const body = await c.req.json()
       const { url, reason } = body
     
-      const user_id = "仮ユーザーID" // まずは固定でOK
+      const user_id = "00000000-0000-0000-0000-000000000001"
+
     
       const { data, error } = await supabase
-      .from('bookmarks')
-      .insert({
-        user_id,
-        url,
-        reason
+        .from('bookmarks')
+        .insert({
+          user_id,
+          url,
+          reason,
       })
       .select()
 
