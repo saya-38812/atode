@@ -33,17 +33,20 @@ app.post('/bookmark', async (c) => {
     
       const user_id = "仮ユーザーID" // まずは固定でOK
     
-      const { error } = await supabase
-        .from('bookmarks')
-        .insert({
-          user_id,
-          url,
-          reason,
-        })
-    
+      const { data, error } = await supabase
+      .from('bookmarks')
+      .insert({
+        user_id,
+        url,
+        reason
+      })
+      .select()
+
+      console.log("INSERT RESULT:", { data, error })
+
       if (error) return c.json({ error }, 400)
     
-      return c.json({ status: 'ok' })
+      return c.json({ status: 'ok', data })
     })
     
     
