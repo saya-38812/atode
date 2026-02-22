@@ -87,32 +87,61 @@ async function resolveMetadata(url: string): Promise<{ title: string, thumbnail_
 ========================================= */
 
 app.post('/bookmark', async (c) => {
-  const { url } = await c.req.json()
+  try {
+    const { url } = await c.req.json()
 
-  if (!url) {
-    return c.json({ error: "URL required" }, 400)
+    if (!url) {
+      return c.json({ error: "URL required" }, 400)
+    }
+
+    const user_id = "00000000-0000-0000-0000-000000000001"
+
+    const { title, thumbnail_url, description } = await resolveMetadata(url)
+
+    console.log("BOOKMARK INSERT:", { url, title, thumbnail_url, description })
+
+    // まずthumbnail_url, descriptionを含めて試行
+    const { data, error } = await supabase
+      .from('bookmarks')
+      .insert({
+        user_id,
+        url,
+        title,
+        thumbnail_url,
+        description,
+        viewed: false,
+        is_favorite: false
+      })
+      .select()
+
+    if (error) {
+      console.log("INSERT ERROR (with extras):", JSON.stringify(error))
+
+      // カラムが存在しない場合、thumbnail_url/descriptionなしでリトライ
+      const { data: data2, error: error2 } = await supabase
+        .from('bookmarks')
+        .insert({
+          user_id,
+          url,
+          title,
+          viewed: false,
+          is_favorite: false
+        })
+        .select()
+
+      if (error2) {
+        console.log("INSERT ERROR (fallback):", JSON.stringify(error2))
+        return c.json({ error: error2 }, 400)
+      }
+
+      return c.json({ data: data2 })
+    }
+
+    return c.json({ data })
+  } catch (e) {
+    console.log("BOOKMARK EXCEPTION:", e)
+    return c.json({ error: "Internal server error" }, 500)
   }
-
-  const user_id = "00000000-0000-0000-0000-000000000001"
-
-  const { title, thumbnail_url, description } = await resolveMetadata(url)
-
-  const { data, error } = await supabase
-    .from('bookmarks')
-    .insert({
-      user_id,
-      url,
-      title,
-      thumbnail_url,
-      description,
-      viewed: false,
-      is_favorite: false
-    })
-    .select()
-
-  if (error) return c.json({ error }, 400)
-
-  return c.json({ data })
 })
 
 /* =========================================
