@@ -15,28 +15,50 @@ app.use('*', async (c, next) => {
 })
 
 /* =========================================
-   Utility: Title Resolver
+   Utility: Metadata Resolver
 ========================================= */
 
-async function resolveTitle(url: string): Promise<string> {
+async function resolveMetadata(url: string): Promise<{ title: string, thumbnail_url: string | null, description: string | null }> {
   try {
     // ① YouTube優先
-    if (url.includes("youtube.com/watch")) {
-      const videoId = new URL(url).searchParams.get("v")
+    if (url.includes("youtube.com/watch") || url.includes("youtu.be/")) {
+      const videoId = url.includes("youtu.be/")
+        ? url.split("youtu.be/")[1]?.split("?")[0]
+        : new URL(url).searchParams.get("v")
+
       if (videoId) {
         const ytRes = await fetch(
           `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
         )
         const ytData = await ytRes.json()
-        if (ytData?.title) return ytData.title
+        if (ytData?.title) {
+          return {
+            title: ytData.title,
+            thumbnail_url: ytData.thumbnail_url || null,
+            description: null
+          }
+        }
       }
     }
 
     // ② X専用
-    if (url.includes("x.com") || url.includes("twitter.com")) {
+    if (url.includes("x.com/") || url.includes("twitter.com/")) {
       const match = url.match(/(?:x\.com|twitter\.com)\/([^\/]+)\//)
       const username = match ? match[1] : "X投稿"
-      return `@${username} の投稿`
+      let description = null
+
+      try {
+        const vxUrl = url.replace("x.com", "api.vxtwitter.com").replace("twitter.com", "api.vxtwitter.com")
+        const vxRes = await fetch(vxUrl)
+        const vxData = await vxRes.json()
+        if (vxData?.text) description = vxData.text
+      } catch (e) { }
+
+      return {
+        title: `@${username} の投稿`,
+        thumbnail_url: null,
+        description
+      }
     }
 
     // ③ OG取得
@@ -48,16 +70,15 @@ async function resolveTitle(url: string): Promise<string> {
       }
     })
 
-    return (
-      result.ogTitle ||
-      result.twitterTitle ||
-      result.ogSiteName ||
-      url
-    )
+    return {
+      title: result.ogTitle || result.twitterTitle || result.ogSiteName || url,
+      thumbnail_url: null,
+      description: null
+    }
 
   } catch (e) {
     console.log("TITLE ERROR:", e)
-    return url
+    return { title: url, thumbnail_url: null, description: null }
   }
 }
 
@@ -74,7 +95,7 @@ app.post('/bookmark', async (c) => {
 
   const user_id = "00000000-0000-0000-0000-000000000001"
 
-  const title = await resolveTitle(url)
+  const { title, thumbnail_url, description } = await resolveMetadata(url)
 
   const { data, error } = await supabase
     .from('bookmarks')
@@ -82,6 +103,8 @@ app.post('/bookmark', async (c) => {
       user_id,
       url,
       title,
+      thumbnail_url,
+      description,
       viewed: false,
       is_favorite: false
     })
@@ -105,6 +128,7 @@ app.get('/api/home', async (c) => {
     .select('*')
     .eq('user_id', user_id)
     .eq('viewed', false)
+    .eq('is_favorite', false)
 
   if (error) return c.json({ error }, 400)
 
@@ -124,6 +148,7 @@ app.get('/api/stock', async (c) => {
     .from('bookmarks')
     .select('*')
     .eq('user_id', user_id)
+    .eq('viewed', false)
     .order('created_at', { ascending: false })
 
   if (error) return c.json({ error }, 400)
@@ -140,7 +165,7 @@ app.post('/viewed/:id', async (c) => {
 
   const { error } = await supabase
     .from('bookmarks')
-    .update({ viewed: true })
+    .update({ viewed: true, done_at: new Date().toISOString() })
     .eq('id', id)
 
   if (error) return c.json({ error }, 400)
@@ -154,14 +179,29 @@ app.post('/viewed/:id', async (c) => {
 
 app.post('/favorite/:id', async (c) => {
   const id = c.req.param('id')
-  const { folder_id } = await c.req.json()
+  const body = await c.req.json()
 
+  if (body.remove) {
+    const { error } = await supabase
+      .from('bookmarks')
+      .update({
+        is_favorite: false,
+        favorite_folder_id: null
+      })
+      .eq('id', id)
+
+    if (error) return c.json({ error }, 400)
+    return c.json({ status: 'ok' })
+  }
+
+  const { folder_id } = body
   const { error } = await supabase
     .from('bookmarks')
     .update({
       is_favorite: true,
       viewed: true,
-      favorite_folder_id: folder_id
+      favorite_folder_id: folder_id,
+      done_at: new Date().toISOString()
     })
     .eq('id', id)
 
@@ -210,6 +250,58 @@ app.post('/folders', async (c) => {
 })
 
 
+
+/* =========================================
+   GET /api/favorites
+   お気に入り一覧 (フォルダごと)
+========================================= */
+
+app.get('/api/favorites', async (c) => {
+  const user_id = "00000000-0000-0000-0000-000000000001"
+
+  // Fetch all folders
+  const { data: foldersData, error: foldersError } = await supabase
+    .from('favorite_folders')
+    .select('*')
+    .eq('user_id', user_id)
+    .order('created_at', { ascending: true })
+
+  if (foldersError) return c.json({ error: foldersError }, 400)
+
+  // Fetch all favorite bookmarks
+  const { data: bookmarksData, error: bookmarksError } = await supabase
+    .from('bookmarks')
+    .select('*')
+    .eq('user_id', user_id)
+    .eq('is_favorite', true)
+    .order('created_at', { ascending: false })
+
+  if (bookmarksError) return c.json({ error: bookmarksError }, 400)
+
+  // Group by folder
+  const groupedFolderDict: Record<string, { folder: any, items: any[] }> = {}
+  for (const f of foldersData || []) {
+    groupedFolderDict[f.id] = { folder: f, items: [] }
+  }
+
+  // Also handle items without a folder, or unknown folders
+  const unassigned = { folder: { id: 'unassigned', name: '未分類' }, items: [] as any[] }
+
+  for (const bm of bookmarksData || []) {
+    if (bm.favorite_folder_id && groupedFolderDict[bm.favorite_folder_id]) {
+      groupedFolderDict[bm.favorite_folder_id].items.push(bm)
+    } else {
+      unassigned.items.push(bm)
+    }
+  }
+
+  const result = Object.values(groupedFolderDict)
+  if (unassigned.items.length > 0) {
+    result.push(unassigned)
+  }
+
+  return c.json(result)
+})
 
 /* =========================================
    Server Start
