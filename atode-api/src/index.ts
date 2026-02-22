@@ -242,21 +242,58 @@ app.post('/favorite/:id', async (c) => {
 
 
 /* =========================================
+   GET /api/debug - Supabase接続テスト
+========================================= */
+
+app.get('/api/debug', async (c) => {
+  const results: any = {}
+
+  // bookmarksテーブルの確認
+  const { data: bData, error: bErr } = await supabase
+    .from('bookmarks')
+    .select('id')
+    .limit(1)
+  results.bookmarks = { data: bData, error: bErr }
+
+  // favorite_foldersテーブルの確認
+  const { data: fData, error: fErr } = await supabase
+    .from('favorite_folders')
+    .select('id')
+    .limit(1)
+  results.favorite_folders = { data: fData, error: fErr }
+
+  // 環境変数の確認（キーは隠す）
+  results.env = {
+    supabaseUrl: process.env.SUPABASE_URL ? 'SET' : 'MISSING',
+    supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET (' + process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 10) + '...)' : 'MISSING',
+  }
+
+  return c.json(results)
+})
+
+/* =========================================
    GET /api/folders
 ========================================= */
 
 app.get('/api/folders', async (c) => {
   const user_id = "00000000-0000-0000-0000-000000000001"
 
-  const { data, error } = await supabase
-    .from('favorite_folders')
-    .select('*')
-    .eq('user_id', user_id)
-    .order('created_at', { ascending: true })
+  try {
+    const { data, error } = await supabase
+      .from('favorite_folders')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: true })
 
-  if (error) return c.json({ error }, 400)
+    console.log("GET /api/folders:", { data, error })
 
-  return c.json(data)
+    if (error) return c.json({ error }, 400)
+
+    return c.json(data || [])
+  } catch (e) {
+    console.log("GET /api/folders EXCEPTION:", e)
+    return c.json({ error: String(e) }, 500)
+  }
 })
 
 
@@ -265,17 +302,26 @@ app.get('/api/folders', async (c) => {
 ========================================= */
 
 app.post('/folders', async (c) => {
-  const { name } = await c.req.json()
-  const user_id = "00000000-0000-0000-0000-000000000001"
+  try {
+    const { name } = await c.req.json()
+    const user_id = "00000000-0000-0000-0000-000000000001"
 
-  const { data, error } = await supabase
-    .from('favorite_folders')
-    .insert({ user_id, name })
-    .select()
+    console.log("POST /folders:", { name, user_id })
 
-  if (error) return c.json({ error }, 400)
+    const { data, error } = await supabase
+      .from('favorite_folders')
+      .insert({ user_id, name })
+      .select()
 
-  return c.json(data)
+    console.log("POST /folders result:", { data, error })
+
+    if (error) return c.json({ error }, 400)
+
+    return c.json(data)
+  } catch (e) {
+    console.log("POST /folders EXCEPTION:", e)
+    return c.json({ error: String(e) }, 500)
+  }
 })
 
 
