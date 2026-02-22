@@ -245,7 +245,7 @@ app.post('/favorite/:id', async (c) => {
    GET /api/folders
 ========================================= */
 
-app.get('/folders', async (c) => {
+app.get('/api/folders', async (c) => {
   const user_id = "00000000-0000-0000-0000-000000000001"
 
   const { data, error } = await supabase
