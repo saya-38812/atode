@@ -22,7 +22,9 @@ export default function SettingsPage() {
   }, [])
 
   const handleCopySetup = () => {
+    if (!apiKey) return
     const setupData = {
+      atode_v1: true,
       url: process.env.NEXT_PUBLIC_API_URL + '/bookmark',
       key: apiKey
     }
@@ -97,9 +99,17 @@ export default function SettingsPage() {
 
           {/* iOS Shortcut Setup */}
           <section>
-            <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">
-              iPhone からの保存
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                iPhone からの保存
+              </h2>
+              {apiKey && (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold">
+                  <span className="size-1.5 rounded-full bg-green-500 animate-pulse" />
+                  連携準備完了
+                </span>
+              )}
+            </div>
 
             <div className="bg-white dark:bg-slate-800/50 rounded-xl p-6 shadow-sm border border-primary/5">
               <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
@@ -234,7 +244,7 @@ export default function SettingsPage() {
 
         </div>
 
-      </PageContainer>
-    </div>
+      </PageContainer >
+    </div >
   )
 }
