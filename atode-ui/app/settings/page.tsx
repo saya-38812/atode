@@ -26,7 +26,8 @@ export default function SettingsPage() {
     const setupData = {
       atode_v1: true,
       url: process.env.NEXT_PUBLIC_API_URL + '/bookmark',
-      key: apiKey
+      key: apiKey,
+      api_key: apiKey // どちらの名前でも動くように両方入れる
     }
     navigator.clipboard.writeText(JSON.stringify(setupData))
     setIsCopied(true)

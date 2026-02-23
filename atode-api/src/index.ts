@@ -19,12 +19,9 @@ app.use('*', async (c, next) => {
 ========================================= */
 
 async function getUser(c: Context) {
-  // デバッグ用：すべてのヘッダーを出力
-  const allHeaders = c.req.header();
-  console.log("getUser - all headers:", JSON.stringify(allHeaders));
-
   // 1. ユーザー個別のAPIキー認証 (DB照会)
   const apiKey = c.req.header('x-api-key');
+
 
   if (apiKey) {
     console.log("getUser: x-api-key detected (starts with):", apiKey.substring(0, 5));
@@ -140,23 +137,17 @@ app.post('/bookmark', async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
     const { url } = body;
-    console.log("POST /bookmark - body:", JSON.stringify(body));
 
     if (!url) {
-      console.log("POST /bookmark - Error: URL required");
       return c.json({ error: "URL required" }, 400)
     }
 
     const user_id = await getUser(c)
-    console.log("POST /bookmark - user_id:", user_id);
-    if (!user_id) {
-      console.log("POST /bookmark - Error: Unauthorized");
-      return c.json({ error: "Unauthorized" }, 401)
-    }
+    if (!user_id) return c.json({ error: "Unauthorized" }, 401)
 
-    console.log("POST /bookmark - resolving metadata for:", url);
     const { title, thumbnail_url, description } = await resolveMetadata(url)
-    console.log("POST /bookmark - metadata resolved:", { title, thumbnail_url, description });
+    console.log(`BOOKMARK [${user_id.substring(0, 8)}]: ${url}`);
+
 
 
     // まずthumbnail_url, descriptionを含めて試行
