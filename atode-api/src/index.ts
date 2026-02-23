@@ -19,11 +19,23 @@ app.use('*', async (c, next) => {
 ========================================= */
 
 async function getUser(c: Context) {
-  // 1. APIキーでのバックドア認証（ショートカット等からのアクセス用）
+  // 1. ユーザー個別のAPIキー認証 (DB照会)
   const apiKey = c.req.header('x-api-key');
+  if (apiKey) {
+    const { data, error } = await supabase
+      .from('user_api_keys')
+      .select('user_id')
+      .eq('api_key', apiKey)
+      .single();
+    if (!error && data) {
+      return data.user_id;
+    }
+  }
+
+  // 1.5 グローバルAPIキー（管理者用バックドア：既存ユーザー用）
   if (apiKey && process.env.API_SECRET_KEY && apiKey === process.env.API_SECRET_KEY) {
     if (process.env.API_OWNER_USER_ID) {
-      return process.env.API_OWNER_USER_ID; // 持ち主のユーザーIDを返す
+      return process.env.API_OWNER_USER_ID;
     }
   }
 
@@ -263,6 +275,42 @@ app.post('/favorite/:id', async (c) => {
   if (error) return c.json({ error }, 400)
 
   return c.json({ status: 'ok' })
+})
+
+
+/* =========================================
+   GET /api/me/api-key
+   自分のAPIキーを取得（なければ生成）
+========================================= */
+
+app.get('/api/me/api-key', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) return c.json({ error: "Unauthorized" }, 401);
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) return c.json({ error: "Unauthorized" }, 401);
+
+  // APIキーの取得を試行
+  let { data, error } = await supabase
+    .from('user_api_keys')
+    .select('api_key')
+    .eq('user_id', user.id)
+    .single();
+
+  // なければ新規発行
+  if (error || !data) {
+    const { data: newData, error: insError } = await supabase
+      .from('user_api_keys')
+      .insert({ user_id: user.id })
+      .select('api_key')
+      .single();
+
+    if (insError) return c.json({ error: insError }, 400);
+    data = newData;
+  }
+
+  return c.json({ api_key: data.api_key });
 })
 
 

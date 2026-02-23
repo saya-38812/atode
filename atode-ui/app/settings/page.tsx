@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import PageContainer from "../components/PageContainer"
 import { useAuth } from "@/components/AuthProvider"
-import { supabase } from "@/lib/apiClient"
+import { fetchApi, supabase } from "@/lib/apiClient"
 
 export default function SettingsPage() {
   const { session } = useAuth()
@@ -11,6 +11,25 @@ export default function SettingsPage() {
   const [dark, setDark] = useState(false)
   const [fontSize, setFontSize] = useState(40)
   const [notify, setNotify] = useState(true)
+  const [apiKey, setApiKey] = useState<string | null>(null)
+  const [isCopied, setIsCopied] = useState(false)
+
+  useEffect(() => {
+    fetchApi('/api/me/api-key')
+      .then(res => res.json())
+      .then(data => setApiKey(data.api_key))
+      .catch(err => console.error('fetch api-key error', err))
+  }, [])
+
+  const handleCopySetup = () => {
+    const setupData = {
+      url: process.env.NEXT_PUBLIC_API_URL + '/bookmark',
+      key: apiKey
+    }
+    navigator.clipboard.writeText(JSON.stringify(setupData))
+    setIsCopied(true)
+    setTimeout(() => setIsCopied(false), 2000)
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -73,6 +92,46 @@ export default function SettingsPage() {
               >
                 ログアウト
               </button>
+            </div>
+          </section>
+
+          {/* iOS Shortcut Setup */}
+          <section>
+            <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">
+              iPhone からの保存
+            </h2>
+
+            <div className="bg-white dark:bg-slate-800/50 rounded-xl p-6 shadow-sm border border-primary/5">
+              <p className="text-sm text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
+                YouTubeやXアプリから一瞬で保存できる「ショートカット」を準備しました。
+              </p>
+
+              <div className="space-y-4">
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                  <p className="text-xs font-bold text-slate-400 mb-2">STEP 1: ショートカットを入手</p>
+                  <a
+                    href="https://www.icloud.com/shortcuts/YOUR_SHORTCUT_LINK"
+                    target="_blank"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-blue-500 hover:text-blue-600"
+                  >
+                    <span>📥</span> atode ショートカットをダウンロード
+                  </a>
+                </div>
+
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                  <p className="text-xs font-bold text-slate-400 mb-2">STEP 2: 自動セットアップ</p>
+                  <button
+                    onClick={handleCopySetup}
+                    disabled={!apiKey}
+                    className="w-full py-2.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {isCopied ? "✅ コピーしました！" : "設定情報をコピーする"}
+                  </button>
+                  <p className="text-[10px] text-slate-400 mt-2 text-center">
+                    コピー後、ショートカットを実行すると自動で設定が完了します。
+                  </p>
+                </div>
+              </div>
             </div>
           </section>
 
