@@ -19,8 +19,13 @@ app.use('*', async (c, next) => {
 ========================================= */
 
 async function getUser(c: Context) {
+  // デバッグ用：すべてのヘッダーを出力
+  const allHeaders = c.req.header();
+  console.log("getUser - all headers:", JSON.stringify(allHeaders));
+
   // 1. ユーザー個別のAPIキー認証 (DB照会)
   const apiKey = c.req.header('x-api-key');
+
   if (apiKey) {
     console.log("getUser: x-api-key detected (starts with):", apiKey.substring(0, 5));
     const { data, error } = await supabase
