@@ -22,15 +22,25 @@ async function getUser(c: Context) {
   // 1. ユーザー個別のAPIキー認証 (DB照会)
   const apiKey = c.req.header('x-api-key');
   if (apiKey) {
+    console.log("getUser: x-api-key detected (starts with):", apiKey.substring(0, 5));
     const { data, error } = await supabase
       .from('user_api_keys')
       .select('user_id')
       .eq('api_key', apiKey)
       .single();
-    if (!error && data) {
+
+    if (error) {
+      console.log("getUser: API Key DB error:", JSON.stringify(error));
+    }
+
+    if (data) {
+      console.log("getUser: User found by API Key:", data.user_id);
       return data.user_id;
+    } else {
+      console.log("getUser: No user matches this API Key.");
     }
   }
+
 
   // 1.5 グローバルAPIキー（管理者用バックドア：既存ユーザー用）
   if (apiKey && process.env.API_SECRET_KEY && apiKey === process.env.API_SECRET_KEY) {
