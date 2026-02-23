@@ -110,7 +110,7 @@ export default function SettingsPage() {
                 <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-800">
                   <p className="text-xs font-bold text-slate-400 mb-2">STEP 1: ショートカットを入手</p>
                   <a
-                    href="https://www.icloud.com/shortcuts/35143f15fd9640219cd018b79467ca65"
+                    href="https://www.icloud.com/shortcuts/1d8dcb8a6d1d40e597af2accd3694a20"
                     target="_blank"
                     className="inline-flex items-center gap-2 text-sm font-semibold text-blue-500 hover:text-blue-600"
                   >
