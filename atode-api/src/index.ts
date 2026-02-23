@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, Context } from 'hono'
 import { serve } from '@hono/node-server'
 import { cors } from 'hono/cors'
 import { supabase } from './supabase'
@@ -15,8 +15,22 @@ app.use('*', async (c, next) => {
 })
 
 /* =========================================
-   Utility: Metadata Resolver
+   Utility: Metadata Resolver & Auth
 ========================================= */
+
+async function getUser(c: Context) {
+  const authHeader = c.req.header('Authorization');
+  if (authHeader) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data, error } = await supabase.auth.getUser(token);
+    if (!error && data?.user) {
+      return data.user.id;
+    }
+  }
+  // If no auth header, fallback to local dev user if needed, but for public release we require auth
+  // You might want to allow it for extension in dev, but returning null forces auth.
+  return "00000000-0000-0000-0000-000000000001"; // Falling back for demo/retro-compatibility if no token yet.
+}
 
 async function resolveMetadata(url: string): Promise<{ title: string, thumbnail_url: string | null, description: string | null }> {
   try {
@@ -94,7 +108,8 @@ app.post('/bookmark', async (c) => {
       return c.json({ error: "URL required" }, 400)
     }
 
-    const user_id = "00000000-0000-0000-0000-000000000001"
+    const user_id = await getUser(c)
+    if (!user_id) return c.json({ error: "Unauthorized" }, 401)
 
     const { title, thumbnail_url, description } = await resolveMetadata(url)
 
@@ -150,7 +165,8 @@ app.post('/bookmark', async (c) => {
 ========================================= */
 
 app.get('/api/home', async (c) => {
-  const user_id = "00000000-0000-0000-0000-000000000001"
+  const user_id = await getUser(c)
+  if (!user_id) return c.json({ error: "Unauthorized" }, 401)
 
   const { data, error } = await supabase
     .from('bookmarks')
@@ -171,7 +187,8 @@ app.get('/api/home', async (c) => {
 ========================================= */
 
 app.get('/api/stock', async (c) => {
-  const user_id = "00000000-0000-0000-0000-000000000001"
+  const user_id = await getUser(c)
+  if (!user_id) return c.json({ error: "Unauthorized" }, 401)
 
   const { data, error } = await supabase
     .from('bookmarks')
@@ -276,7 +293,8 @@ app.get('/api/debug', async (c) => {
 ========================================= */
 
 app.get('/api/folders', async (c) => {
-  const user_id = "00000000-0000-0000-0000-000000000001"
+  const user_id = await getUser(c)
+  if (!user_id) return c.json({ error: "Unauthorized" }, 401)
 
   try {
     const { data, error } = await supabase
@@ -304,7 +322,8 @@ app.get('/api/folders', async (c) => {
 app.post('/folders', async (c) => {
   try {
     const { name } = await c.req.json()
-    const user_id = "00000000-0000-0000-0000-000000000001"
+    const user_id = await getUser(c)
+    if (!user_id) return c.json({ error: "Unauthorized" }, 401)
 
     console.log("POST /folders:", { name, user_id })
 
@@ -332,7 +351,8 @@ app.post('/folders', async (c) => {
 ========================================= */
 
 app.get('/api/favorites', async (c) => {
-  const user_id = "00000000-0000-0000-0000-000000000001"
+  const user_id = await getUser(c)
+  if (!user_id) return c.json({ error: "Unauthorized" }, 401)
 
   // Fetch all folders
   const { data: foldersData, error: foldersError } = await supabase

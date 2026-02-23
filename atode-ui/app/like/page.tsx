@@ -17,20 +17,20 @@ type GroupedItems = {
   items: FavoriteItem[]
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL
+import { fetchApi } from "@/lib/apiClient"
 
 export default function LikePage() {
   const [groupedFolders, setGroupedFolders] = useState<GroupedItems[]>([])
   const [selectedFolder, setSelectedFolder] = useState<GroupedItems | null>(null)
 
   useEffect(() => {
-    fetch(`${API}/api/favorites`)
+    fetchApi(`/api/favorites`)
       .then((res) => res.json())
       .then((data) => setGroupedFolders(data))
   }, [])
 
   const handleRemove = async (id: string, folderId: string) => {
-    await fetch(`${API}/favorite/${id}`, {
+    await fetchApi(`/favorite/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ remove: true }),

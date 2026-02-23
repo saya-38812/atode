@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import PageContainer from "../components/PageContainer"
 
+import { fetchApi } from "@/lib/apiClient"
+
 type Item = {
   id: string
   url: string
@@ -14,10 +16,9 @@ type Item = {
 
 export default function StockPage() {
   const [items, setItems] = useState<Item[]>([])
-  const API = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
-    fetch(`${API}/api/stock`)
+    fetchApi(`/api/stock`)
       .then((res) => res.json())
       .then((data) => setItems(data))
   }, [])

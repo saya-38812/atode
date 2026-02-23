@@ -12,7 +12,7 @@ type Card = {
   viewed: boolean
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL
+import { fetchApi } from "@/lib/apiClient"
 
 export default function Home() {
   const [cards, setCards] = useState<Card[]>([])
@@ -24,7 +24,7 @@ export default function Home() {
 
   const fetchCards = async () => {
     try {
-      const res = await fetch(`${API}/api/home`)
+      const res = await fetchApi(`/api/home`)
       const data = await res.json()
       setCards(data)
     } catch (e) {
@@ -33,7 +33,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    fetch(`${API}/api/folders`)
+    fetchApi(`/api/folders`)
       .then((res) => res.json())
       .then((data) => setFolders(data))
   }, [])
@@ -43,7 +43,7 @@ export default function Home() {
   }, [])
 
   const handleFavorite = async (bookmarkId: string, folderId: string) => {
-    await fetch(`${API}/favorite/${bookmarkId}`, {
+    await fetchApi(`/favorite/${bookmarkId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ folder_id: folderId }),
@@ -57,7 +57,7 @@ export default function Home() {
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
 
-    const res = await fetch(`${API}/folders`, {
+    const res = await fetchApi(`/folders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newFolderName.trim() }),
@@ -81,7 +81,7 @@ export default function Home() {
   // 確認モーダルで「見た（お気に入りしない）」
   const handleConfirmViewed = async () => {
     if (!confirmCard) return
-    await fetch(`${API}/viewed/${confirmCard.id}`, { method: "POST" })
+    await fetchApi(`/viewed/${confirmCard.id}`, { method: "POST" })
     setCards((prev) => prev.filter((c) => c.id !== confirmCard.id))
     setConfirmCard(null)
     fetchCards()
