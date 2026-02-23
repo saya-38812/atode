@@ -19,6 +19,15 @@ app.use('*', async (c, next) => {
 ========================================= */
 
 async function getUser(c: Context) {
+  // 1. APIキーでのバックドア認証（ショートカット等からのアクセス用）
+  const apiKey = c.req.header('x-api-key');
+  if (apiKey && process.env.API_SECRET_KEY && apiKey === process.env.API_SECRET_KEY) {
+    if (process.env.API_OWNER_USER_ID) {
+      return process.env.API_OWNER_USER_ID; // 持ち主のユーザーIDを返す
+    }
+  }
+
+  // 2. 通常のJWT認証（ブラウザ等からのアクセス用）
   const authHeader = c.req.header('Authorization');
   if (authHeader) {
     const token = authHeader.replace('Bearer ', '');
@@ -27,9 +36,9 @@ async function getUser(c: Context) {
       return data.user.id;
     }
   }
-  // If no auth header, fallback to local dev user if needed, but for public release we require auth
-  // You might want to allow it for extension in dev, but returning null forces auth.
-  return "00000000-0000-0000-0000-000000000001"; // Falling back for demo/retro-compatibility if no token yet.
+
+  // 認証に失敗した場合は null を返す（fallback IDは削除）
+  return null;
 }
 
 async function resolveMetadata(url: string): Promise<{ title: string, thumbnail_url: string | null, description: string | null }> {
@@ -146,7 +155,7 @@ app.post('/bookmark', async (c) => {
 
       if (error2) {
         console.log("INSERT ERROR (fallback):", JSON.stringify(error2))
-        return c.json({ error: error2 }, 400)
+        return c.json({ error: error2, message: "Database insert failed" }, 400)
       }
 
       return c.json({ data: data2 })

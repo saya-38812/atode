@@ -2,11 +2,20 @@
 
 import { useEffect, useState } from "react"
 import PageContainer from "../components/PageContainer"
+import { useAuth } from "@/components/AuthProvider"
+import { supabase } from "@/lib/apiClient"
 
 export default function SettingsPage() {
+  const { session } = useAuth()
+  const user = session?.user
   const [dark, setDark] = useState(false)
   const [fontSize, setFontSize] = useState(40)
   const [notify, setNotify] = useState(true)
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/'
+  }
 
   // ダークモード反映
   useEffect(() => {
@@ -42,14 +51,28 @@ export default function SettingsPage() {
               アカウント
             </h2>
 
-            <div className="bg-white dark:bg-slate-800/50 rounded-xl p-5 shadow-sm border border-primary/5 flex items-center gap-4">
-              <div className="size-16 rounded-full bg-primary/10 border-2 border-primary/20" />
-              <div>
-                <p className="text-lg font-bold">大学 太郎</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  ADHD思考リセット中
-                </p>
+            <div className="bg-white dark:bg-slate-800/50 rounded-xl p-5 shadow-sm border border-primary/5 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="size-16 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center overflow-hidden">
+                  {user?.user_metadata?.avatar_url ? (
+                    <img src={user.user_metadata.avatar_url} alt="" className="size-full object-cover" />
+                  ) : (
+                    <span className="text-xl">👤</span>
+                  )}
+                </div>
+                <div>
+                  <p className="text-lg font-bold">{user?.user_metadata?.full_name || 'ユーザー'}</p>
+                  <p className="text-xs text-slate-500 truncate max-w-[150px]">
+                    {user?.email}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={handleLogout}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+              >
+                ログアウト
+              </button>
             </div>
           </section>
 
